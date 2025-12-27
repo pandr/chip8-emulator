@@ -55,14 +55,13 @@ int sdl_key_map[16] = {
     SDLK_q, SDLK_w, SDLK_e, SDLK_a,
     SDLK_s, SDLK_d, SDLK_z, SDLK_c,
     SDLK_4, SDLK_r, SDLK_f, SDLK_v
-    };
-
+};
 
 void run_cycle(bool verbose)
 {
     uint16_t opcode = ((uint16_t)memory[pc] << 8) + memory[pc+1];
     if(verbose)
-      printf("Exec: %04x: %04x\n", pc, opcode);
+        printf("Exec: %04x: %04x\n", pc, opcode);
     pc+=2;
     switch(opcode >> 12) {
         case 0:  // 00EE: RET, 00E0: CLS
@@ -109,21 +108,21 @@ void run_cycle(bool verbose)
                 if(op == 0)
                     *r1 = *r2;
                 else if (op == 1)
-                    *r1 |= *r2, *f=0;
+                    *r1 |= *r2, *f = 0;
                 else if (op == 2)
-                    *r1 &= *r2, *f=0;
+                    *r1 &= *r2, *f = 0;
                 else if (op == 3)
-                    *r1 ^= *r2, *f=0;
+                    *r1 ^= *r2, *f = 0;
                 else if (op == 4)
                     flag = (*r1 + *r2 > 255 ? 1 : 0), *r1 += *r2, *f = flag;
                 else if (op == 5)
                     flag = (*r1 - *r2 < 0 ? 0 : 1), *r1 -= *r2, *f = flag;
                 else if (op == 6)  // CHIP-8: copy before shift
-                    *r1=*r2, flag = (*r1 & 1), *r1 >>= 1, *f = flag;
+                    *r1 = *r2, flag = (*r1 & 1), *r1 >>= 1, *f = flag;
                 else if (op == 7)
                     flag = (*r2 - *r1 < 0 ? 0 : 1), *r1 = *r2 - *r1, *f = flag;
                 else if (op == 0xE)  // CHIP-8: copy before shift
-                    *r1=*r2, flag = ((*r1 & 0x80) ? 1 : 0), *r1 <<= 1, *f = flag;
+                    *r1 = *r2, flag = ((*r1 & 0x80) ? 1 : 0), *r1 <<= 1, *f = flag;
                 else goto err;
             }
             break;
@@ -148,7 +147,7 @@ void run_cycle(bool verbose)
                 uint8_t px = registers[(opcode & 0x0F00) >> 8] & 0x3F;
                 uint8_t py = registers[(opcode & 0x00F0) >> 4] & 0x1F;
                 uint8_t n = (opcode & 0x000F);
-                registers[15]=0;
+                registers[15] = 0;
                 for(int y = 0; y < n; ++y)
                 {
                     uint8_t row = memory[addr_reg+y];
@@ -157,7 +156,7 @@ void run_cycle(bool verbose)
                         if(px+x < 0x40 && py+y < 0x20)
                         {
                             uint8_t *s = screen + (((px + x)&0x3F) + ((py+y)&0x1F)*64);
-                            if(*s && (row&1)) { *s = 0; registers[15]=1; }
+                            if(*s && (row&1)) { *s = 0; registers[15] = 1; }
                             else if (row&1) *s = 1;
                         }
                         row >>= 1;
@@ -202,9 +201,9 @@ void run_cycle(bool verbose)
                     addr_reg = *r1 * 5;
                 else if (op == 0x33) {
                     uint8_t v = *r1;
-                    memory[addr_reg] = v/100;
-                    memory[addr_reg+1] = (v%100)/10;
-                    memory[addr_reg+2] = v%10;
+                    memory[addr_reg+2] = v % 10; v /= 10;
+                    memory[addr_reg+1] = v % 10; v /= 10;
+                    memory[addr_reg] = v;
                 }
                 else if (op == 0x55)
                 {
@@ -233,12 +232,18 @@ err:
 
 int main(int argc, char* argv[]) {
     bool stepping = false;
+    bool show_timing = false;
+    int cycles_per_frame = 8;
     char* rom_file = NULL;
 
     // Parse command line arguments
     for(int i = 1; i < argc; i++) {
         if(strcmp(argv[i], "-s") == 0) {
             stepping = true;
+        } else if(strcmp(argv[i], "-t") == 0) {
+            show_timing = true;
+        } else if(strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
+            cycles_per_frame = atoi(argv[++i]);
         } else {
             rom_file = argv[i];
         }
@@ -319,12 +324,12 @@ int main(int argc, char* argv[]) {
     while (running) {
         framecount++;
 
-        if(false && framecount%60 == 0)
+        if(show_timing && framecount%60 == 0)
         {
             printf("Frames %i, instructions %i, time: %f\n", framecount, icount, float(SDL_GetTicks())/(CLOCKS_PER_SEC/1000));
         }
 
-        int cycles = 8;
+        int cycles = cycles_per_frame;
 
         if(stepping)
             cycles = 0;  // Wait for SPACE keypress

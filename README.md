@@ -28,6 +28,18 @@ Run the emulator with a ROM:
 ./bin/chip8 roms/yourrom.ch8
 ```
 
+### Command Line Arguments
+
+- `-s` - Enable stepping mode (press SPACE to step through instructions)
+- `-t` - Show timing information (prints stats every 60 frames)
+- `-c <num>` - Set cycles per frame (default: 8)
+
+Example:
+```bash
+# Run with 12 cycles per frame
+./bin/chip8 -c 12 roms/BRIX
+```
+
 ## Project Structure
 
 - `src/chip8.cpp` - Complete CHIP-8 emulator implementation

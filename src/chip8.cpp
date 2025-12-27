@@ -339,28 +339,34 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
-            } else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE)
-            {
+                continue;
+            }
+
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE) {
                 if(stepping)
                     cycles = 1;
-            } else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-                if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
-                    running = false;
-                } else {
-                    for(int i = 0; i < 16; ++i)
-                    {
-                        if(event.key.keysym.sym == sdl_key_map[i])
-                        {
-                            keyboard[i] = event.type == SDL_KEYDOWN ? 1 : 0;
-                            if(halt == 2 && event.type == SDL_KEYUP)
-                            {
-                                key = i;
-                                halt = 0;
-                            }
-                            break;
-                        }
-                    }
+                continue;
+            }
+
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+                running = false;
+                continue;
+            }
+
+            if (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP)
+                continue;
+
+            // Handle CHIP-8 key mapping
+            for(int i = 0; i < 16; ++i) {
+                if(event.key.keysym.sym != sdl_key_map[i])
+                    continue;
+
+                keyboard[i] = event.type == SDL_KEYDOWN ? 1 : 0;
+                if(halt == 2 && event.type == SDL_KEYUP) {
+                    key = i;
+                    halt = 0;
                 }
+                break;
             }
         }
 

@@ -1,17 +1,25 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+// CPU state
 uint8_t memory[0x1000] = {};
 uint8_t registers[16] = {};
 uint16_t addr_reg = 0;
 uint16_t stack[32] = {};
 uint16_t sp = 0, pc = 0x200;
+
+// Display
 uint8_t screen[64*32] = {};
-uint8_t halt = 0; // reason 1: none; stay halted  2: waiting for keypress
+
+// Timers and control
+uint8_t halt = 0; // 0: running  1: halted  2: waiting for keypress
 uint8_t delay = 0;
 uint8_t sound = 0;
-uint8_t key = 0xFF; // 0xFF: invalid no key
+
+// Input
+uint8_t key = 0xFF; // 0xFF: no key pressed
 uint8_t keyboard[16] = {};
 
 #define SCREENSCALE 20
@@ -57,7 +65,7 @@ void run_cycle(bool verbose)
       printf("Exec: %04x: %04x\n", pc, opcode);
     pc+=2;
     switch(opcode >> 12) {
-        case 0:
+        case 0:  // 00EE: RET, 00E0: CLS
             if((opcode & 0x0FF) == 0xEE) {
                 pc = stack[--sp];
             }
@@ -66,32 +74,32 @@ void run_cycle(bool verbose)
             }
             else goto err;
             break;
-        case 1:
+        case 1:  // 1NNN: JP addr
             pc = opcode & 0x0FFF;
             break;
-        case 2:
+        case 2:  // 2NNN: CALL addr
             stack[sp++] = pc;
             pc = opcode & 0x0FFF;
             break;
-        case 3:
+        case 3:  // 3XNN: SE Vx, byte
             if(registers[(opcode & 0x0F00)>>8] == (opcode&0x00FF))
                 pc+=2;
             break;
-        case 4:
+        case 4:  // 4XNN: SNE Vx, byte
             if(registers[(opcode & 0x0F00)>>8] != (opcode&0x00FF))
                 pc+=2;
             break;
-        case 5:
+        case 5:  // 5XY0: SE Vx, Vy
             if(registers[(opcode & 0x0F00)>>8] == registers[(opcode & 0x00F0)>>4])
                 pc+=2;
             break;
-        case 6:
+        case 6:  // 6XNN: LD Vx, byte
             registers[(opcode & 0x0F00) >> 8] = (opcode & 0x0FF);
             break;
-        case 7:
+        case 7:  // 7XNN: ADD Vx, byte
             registers[(opcode & 0x0F00) >> 8] += (opcode & 0x0FF);
             break;
-        case 8:
+        case 8:  // 8XY_: ALU operations
             {
                 uint8_t *r1 = registers + ((opcode & 0x0F00) >> 8);
                 uint8_t *r2 = registers + ((opcode & 0x00F0) >> 4);
@@ -110,32 +118,32 @@ void run_cycle(bool verbose)
                     flag = (*r1 + *r2 > 255 ? 1 : 0), *r1 += *r2, *f = flag;
                 else if (op == 5)
                     flag = (*r1 - *r2 < 0 ? 0 : 1), *r1 -= *r2, *f = flag;
-                else if (op == 6)
+                else if (op == 6)  // CHIP-8: copy before shift
                     *r1=*r2, flag = (*r1 & 1), *r1 >>= 1, *f = flag;
                 else if (op == 7)
                     flag = (*r2 - *r1 < 0 ? 0 : 1), *r1 = *r2 - *r1, *f = flag;
-                else if (op == 0xE)
+                else if (op == 0xE)  // CHIP-8: copy before shift
                     *r1=*r2, flag = ((*r1 & 0x80) ? 1 : 0), *r1 <<= 1, *f = flag;
                 else goto err;
             }
             break;
-        case 9:
+        case 9:  // 9XY0: SNE Vx, Vy
             if(registers[(opcode & 0x0F00)>>8] != registers[(opcode & 0x00F0)>>4])
                 pc+=2;
             break;
-        case 0xA:
+        case 0xA:  // ANNN: LD I, addr
             addr_reg = opcode & 0x0FFF;
             break;
-        case 0xB:
+        case 0xB:  // BNNN: JP V0, addr
             pc = registers[0] + (opcode & 0x0FFF);
             break;
-        case 0xC:
+        case 0xC:  // CXNN: RND Vx, byte
         {
             uint8_t r = rand() & 0xFF & (opcode & 0x00FF);
             registers[(opcode & 0x0F00) >> 8] = r;
         }
             break;
-        case 0xD:
+        case 0xD:  // DXYN: DRW Vx, Vy, nibble
             {
                 uint8_t px = registers[(opcode & 0x0F00) >> 8] & 0x3F;
                 uint8_t py = registers[(opcode & 0x00F0) >> 4] & 0x1F;
@@ -144,7 +152,7 @@ void run_cycle(bool verbose)
                 for(int y = 0; y < n; ++y)
                 {
                     uint8_t row = memory[addr_reg+y];
-                    for(int x = 7; x >= 0; --x)
+                    for(int x = 7; x >= 0; --x)  // Process sprite bits right-to-left
                     {
                         if(px+x < 0x40 && py+y < 0x20)
                         {
@@ -157,7 +165,7 @@ void run_cycle(bool verbose)
                 }
             }
             break;
-        case 0xE:
+        case 0xE:  // EX9E: SKP, EXA1: SKNP
             if ((opcode & 0x00FF) == 0x9E) {
                 if(keyboard[registers[(opcode & 0x0F00) >> 8] & 0xF])
                     pc += 2;
@@ -168,7 +176,7 @@ void run_cycle(bool verbose)
             }
             else goto err;
             break;
-        case 0xF:
+        case 0xF:  // FX__: Timers, memory, BCD
             {
                 uint8_t *r1 = registers + ((opcode & 0x0F00) >> 8);
                 uint8_t op = opcode & 0x00FF;
@@ -193,20 +201,20 @@ void run_cycle(bool verbose)
                 else if (op == 0x29)
                     addr_reg = *r1 * 5;
                 else if (op == 0x33) {
-                    uint8_t v = *r1; memory[addr_reg] = v/100; v -= v/100*100;
-                    memory[addr_reg+1] = v/10;
-                    v -= v/10*10;
-                    memory[addr_reg+2] = v;
+                    uint8_t v = *r1;
+                    memory[addr_reg] = v/100;
+                    memory[addr_reg+1] = (v%100)/10;
+                    memory[addr_reg+2] = v%10;
                 }
                 else if (op == 0x55)
                 {
                     memcpy(memory+addr_reg, registers, r1-registers+1);
-                    addr_reg += r1-registers+1;
+                    addr_reg += r1-registers+1;  // CHIP-8: increment I register
                 }
                 else if (op == 0x65)
                 {
                     memcpy(registers, memory+addr_reg, r1-registers+1);
-                    addr_reg += r1-registers+1;
+                    addr_reg += r1-registers+1;  // CHIP-8: increment I register
                 }
                 else
                     goto err;
@@ -224,8 +232,17 @@ err:
 
 
 int main(int argc, char* argv[]) {
-    (void)argc;
-    (void)argv;
+    bool stepping = false;
+    char* rom_file = NULL;
+
+    // Parse command line arguments
+    for(int i = 1; i < argc; i++) {
+        if(strcmp(argv[i], "-s") == 0) {
+            stepping = true;
+        } else {
+            rom_file = argv[i];
+        }
+    }
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -265,30 +282,37 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    printf("SDL2 initialized successfully!\n");
-    printf("Window: 640x480\n");
+    printf("Chip8 emulator\n");
+    if(stepping) {
+        printf("Stepping mode enabled (press SPACE to step)\n");
+    }
     printf("Press ESC to quit\n");
 
-    // Builtin fontset stored in from from addr 0
+    // Builtin fontset stored in ROM from addr 0
     memcpy(memory, fontset, 80);
 
     // Rom loading
-    if(argc > 1) {
-	    printf("Loading rom %s\n", argv[1]);
-	    FILE* f = fopen(argv[1], "rb");
-	    fseek(f, 0, SEEK_END);
-	    uint64_t romsize = ftell(f);
-	    fseek(f, 0, SEEK_SET);
-	    if(romsize > 0x1000 - 0x200) {
+    // Loaded from 0x200 by convention
+    if(rom_file) {
+        printf("Loading rom %s\n", rom_file);
+        FILE* f = fopen(rom_file, "rb");
+        if(!f)
+        {
+            printf("Failed to load rom from %s\n", rom_file);
+            return 1;
+        }
+        fseek(f, 0, SEEK_END);
+        uint64_t romsize = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if(romsize > 0x1000 - 0x200) {
             printf("Rom too big (%lld bytes)\n", romsize);
             return 1;
         }
         fread(memory + 0x200, romsize, 1, f);
-        fclose(f);	    
+        fclose(f);
     }
 
     bool running = true;
-    bool stepping = false;
     int framecount = 0;
     int icount = 0;
 
@@ -303,9 +327,9 @@ int main(int argc, char* argv[]) {
         int cycles = 8;
 
         if(stepping)
-            cycles = 0;
+            cycles = 0;  // Wait for SPACE keypress
 
-	    // Keyboard handling
+        // Keyboard handling
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
@@ -350,7 +374,7 @@ int main(int argc, char* argv[]) {
             sound--;
 
         // Clear screen
-    	SDL_SetRenderDrawColor(renderer, sound > 0 ? 80 : 5, 15, 5, 255);
+        SDL_SetRenderDrawColor(renderer, sound > 0 ? 80 : 5, 15, 5, 255);
         SDL_RenderClear(renderer);
 
         // Draw screen
@@ -367,7 +391,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-	    // Flip
+        // Flip
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // ~60 FPS
     }

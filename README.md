@@ -28,11 +28,6 @@ Run the emulator with a ROM:
 ./bin/chip8 roms/yourrom.ch8
 ```
 
-Or build and run:
-```bash
-make run
-```
-
 ## Project Structure
 
 - `src/chip8.cpp` - Complete CHIP-8 emulator implementation

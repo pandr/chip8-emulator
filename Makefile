@@ -28,12 +28,8 @@ $(BIN_DIR):
 clean:
 	rm -rf $(BIN_DIR)
 
-# Run
-run: $(TARGET)
-	./$(TARGET)
-
 # Debug build
 debug: CXXFLAGS += -DDEBUG -g3 -O0
 debug: clean all
 
-.PHONY: all clean run debug
+.PHONY: all clean debug

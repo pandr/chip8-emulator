@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+bin/
+
+# IDE
+.vscode/settings.json
+.DS_Store
+
+# ROMs (don't commit copyrighted material)
+roms/*.ch8
+roms/*.gb
+roms/*.gbc
+!roms/.gitkeep
+
+# Misc
+*.o
+*.dSYM/

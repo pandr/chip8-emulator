@@ -310,7 +310,7 @@ int main(int argc, char* argv[]) {
         uint64_t romsize = ftell(f);
         fseek(f, 0, SEEK_SET);
         if(romsize > 0x1000 - 0x200) {
-            printf("Rom too big (%lld bytes)\n", romsize);
+            printf("Rom too big (%ld bytes)\n", romsize);
             return 1;
         }
         fread(memory + 0x200, romsize, 1, f);
@@ -326,7 +326,7 @@ int main(int argc, char* argv[]) {
 
         if(show_timing && framecount%60 == 0)
         {
-            printf("Frames %i, instructions %i, time: %f\n", framecount, icount, float(SDL_GetTicks())/(CLOCKS_PER_SEC/1000));
+            printf("Frames %i, instructions %i, time: %f\n", framecount, icount, float(SDL_GetTicks64())/1000.0f);
         }
 
         int cycles = cycles_per_frame;

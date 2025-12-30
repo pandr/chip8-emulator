@@ -1,9 +1,20 @@
-# Compiler and flags
-CXX = clang++
+# Detect platform
+
+UNAME_S := $(shell uname -s)
+
+# Compiler selection
+ifeq ($(UNAME_S),Darwin)
+	CXX = clang++
+else
+	CXX = g++
+endif
+
+# Common flags
 CXXFLAGS = -std=c++11 -Wall -Wextra -O2 -g
-INCLUDES = -I/opt/homebrew/include/SDL2
-LDFLAGS = -L/opt/homebrew/lib
-LIBS = -lSDL2
+
+# SDL flags
+SDL_CFLAGS := $(shell sdl2-config --cflags)
+SDL_LIBS := $(shell sdl2-config --libs)
 
 # Directories
 SRC_DIR = src
@@ -18,7 +29,7 @@ all: $(TARGET)
 
 # Build
 $(TARGET): $(SOURCE) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) $< -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $< -o $@ $(SDL_LIBS)
 
 # Create bin directory
 $(BIN_DIR):

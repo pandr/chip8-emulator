@@ -2,16 +2,34 @@
 
 A single-file CHIP-8 emulator implementation in C++ with SDL2.
 
+## Platform Support
+
+This emulator runs on:
+- macOS (Intel and ARM)
+- Linux
+
 ## Prerequisites
 
-- macOS with Xcode Command Line Tools
-- SDL2 library
+### macOS
+- Xcode Command Line Tools
+- SDL2 library (via Homebrew)
+
+### Linux
+- GCC compiler
+- SDL2 development libraries
 
 ## Setup
 
+### macOS
 Install SDL2:
 ```bash
 brew install sdl2
+```
+
+### Linux
+Install SDL2 (Debian/Ubuntu):
+```bash
+sudo apt-get install libsdl2-dev
 ```
 
 ## Building

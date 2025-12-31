@@ -307,7 +307,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         fseek(f, 0, SEEK_END);
-        uint64_t romsize = ftell(f);
+        long romsize = ftell(f);
         fseek(f, 0, SEEK_SET);
         if(romsize > 0x1000 - 0x200) {
             printf("Rom too big (%ld bytes)\n", romsize);
